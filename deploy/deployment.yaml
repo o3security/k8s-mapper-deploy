@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-mapper
+  namespace: o3-security
+  labels:
+    app.kubernetes.io/name: k8s-mapper
+    app.kubernetes.io/component: resource-mapper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: k8s-mapper
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: k8s-mapper
+        app.kubernetes.io/component: resource-mapper
+    spec:
+      serviceAccountName: k8s-mapper
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: k8s-mapper
+          image: public.ecr.aws/f9o7b7m0/k8s-mapper:latest
+          args:
+            - "--addr=:8080"
+            - "--log-level=info"
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+      terminationGracePeriodSeconds: 30

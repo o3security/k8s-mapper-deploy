@@ -1,0 +1,43 @@
+# ServiceAccount for k8s-mapper
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: k8s-mapper
+  namespace: o3-security
+  labels:
+    app.kubernetes.io/name: k8s-mapper
+    app.kubernetes.io/component: resource-mapper
+---
+# ClusterRole — READ-ONLY access to namespaces, pods, jobs.
+# No secrets, configmaps, or write operations.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: k8s-mapper
+  labels:
+    app.kubernetes.io/name: k8s-mapper
+    app.kubernetes.io/component: resource-mapper
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces", "pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list", "watch"]
+---
+# ClusterRoleBinding — grants cross-namespace read access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8s-mapper
+  labels:
+    app.kubernetes.io/name: k8s-mapper
+    app.kubernetes.io/component: resource-mapper
+subjects:
+  - kind: ServiceAccount
+    name: k8s-mapper
+    namespace: o3-security
+roleRef:
+  kind: ClusterRole
+  name: k8s-mapper
+  apiGroup: rbac.authorization.k8s.io
