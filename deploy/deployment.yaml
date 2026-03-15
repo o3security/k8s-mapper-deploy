@@ -17,6 +17,8 @@ spec:
         app.kubernetes.io/name: k8s-mapper
         app.kubernetes.io/component: resource-mapper
     spec:
+      hostNetwork: true            # Use node's network → access IMDS for ECR auth (same as kubelet)
+      dnsPolicy: ClusterFirstWithHostNet  # Required with hostNetwork to resolve cluster DNS
       serviceAccountName: k8s-mapper
       automountServiceAccountToken: true
       securityContext:
