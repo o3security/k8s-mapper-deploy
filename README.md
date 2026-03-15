@@ -6,7 +6,7 @@
 
 - Kubernetes 1.24+
 - `kubectl` configured with cluster-admin or sufficient RBAC permissions
-- **O3 Security API key** — generate from **Settings → API Keys** in your [O3 Security dashboard](https://app.o3security.com)
+- **O3 Security API key** — generate from **Settings → API Keys** in your [O3 Security dashboard](https://app.codexsecurity.io)
 
 ## Quick Start
 
@@ -26,7 +26,7 @@ kubectl create secret generic o3-security-credentials \
 
 Edit `deploy/deployment.yaml` and set:
 - `O3_CLUSTER_NAME` — a display name for this cluster (e.g., `production`, `staging`)
-- `O3_API_URL` — your O3 Security GraphQL endpoint (default: `https://api.o3security.com/graphql`)
+- `O3_API_URL` — your O3 Security GraphQL endpoint (default: `https://api.codexsecurity.io/graphql`)
 
 ### 3. Apply the manifests
 
@@ -132,4 +132,4 @@ kubectl delete -f deploy/
 
 ## Support
 
-For issues or questions, contact [support@o3security.com](mailto:support@o3security.com).
+For issues or questions, contact [support@codexsecurity.io](mailto:support@codexsecurity.io).

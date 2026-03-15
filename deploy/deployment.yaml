@@ -41,7 +41,7 @@ spec:
                   name: o3-security-credentials
                   key: api-key
             - name: O3_API_URL
-              value: "https://api.o3security.com/graphql"
+              value: "https://api.codexsecurity.io/graphql"
             - name: O3_CLUSTER_NAME
               value: "my-cluster"  # Change to your cluster name
           ports:
