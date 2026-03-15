@@ -6,11 +6,31 @@
 
 - Kubernetes 1.24+
 - `kubectl` configured with cluster-admin or sufficient RBAC permissions to create ClusterRoles
+- **O3 Security API key** — generate from **Settings → API Keys** in your [O3 Security dashboard](https://app.o3security.com)
 
 ## Quick Start
 
+### 1. Create the O3 Security API key secret
+
 ```bash
-kubectl apply -f deploy/namespace.yaml
+kubectl create namespace o3-security
+
+kubectl create secret generic o3-security-credentials \
+  --namespace o3-security \
+  --from-literal=api-key=YOUR_API_KEY_HERE
+```
+
+> Replace `YOUR_API_KEY_HERE` with the API key from your O3 Security dashboard.
+
+### 2. Configure your cluster name and API URL
+
+Edit `deploy/deployment.yaml` and set:
+- `O3_CLUSTER_NAME` — a display name for this cluster (e.g., `production`, `staging`)
+- `O3_API_URL` — your O3 Security GraphQL endpoint (default: `https://api.o3security.com/graphql`)
+
+### 3. Apply the manifests
+
+```bash
 kubectl apply -f deploy/rbac.yaml
 kubectl apply -f deploy/deployment.yaml
 ```
@@ -66,10 +86,12 @@ cat deploy/rbac.yaml
 
 ## Configuration
 
-The deployment accepts the following arguments (edit `deploy/deployment.yaml` if needed):
-
-| Flag | Default | Description |
+| Env Var / Flag | Default | Description |
 |---|---|---|
+| `O3_API_KEY` / `--api-key` | **(required)** | O3 Security API key |
+| `O3_API_URL` / `--api-url` | **(required)** | O3 Security GraphQL endpoint |
+| `O3_CLUSTER_NAME` / `--cluster-name` | `default` | Display name for this cluster |
+| `--sync-interval` | `60s` | How often to push data to O3 backend |
 | `--addr` | `:8080` | HTTP server listen address |
 | `--log-level` | `info` | Log level: `debug`, `info`, `warn`, `error` |
 

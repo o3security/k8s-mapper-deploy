@@ -32,6 +32,16 @@ spec:
           args:
             - "--addr=:8080"
             - "--log-level=info"
+          env:
+            - name: O3_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: o3-security-credentials
+                  key: api-key
+            - name: O3_API_URL
+              value: "https://api.o3security.com/graphql"
+            - name: O3_CLUSTER_NAME
+              value: "my-cluster"  # Change to your cluster name
           ports:
             - name: http
               containerPort: 8080
