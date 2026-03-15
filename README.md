@@ -1,11 +1,11 @@
 # k8s-mapper
 
-**Kubernetes Resource Mapper by O3 Security** — A lightweight agent that continuously tracks your cluster's namespaces, pods, and jobs for security visibility.
+**Kubernetes Supply Chain & Reachability Mapper by O3 Security** — A lightweight agent that continuously tracks your cluster's pods, services, ingresses, and container image provenance (OCI labels, cosign signatures, SLSA attestations).
 
 ## Requirements
 
 - Kubernetes 1.24+
-- `kubectl` configured with cluster-admin or sufficient RBAC permissions to create ClusterRoles
+- `kubectl` configured with cluster-admin or sufficient RBAC permissions
 - **O3 Security API key** — generate from **Settings → API Keys** in your [O3 Security dashboard](https://app.o3security.com)
 
 ## Quick Start
@@ -31,15 +31,30 @@ Edit `deploy/deployment.yaml` and set:
 ### 3. Apply the manifests
 
 ```bash
-kubectl apply -f deploy/rbac.yaml
-kubectl apply -f deploy/deployment.yaml
-```
-
-Or in one shot:
-
-```bash
 kubectl apply -f deploy/
 ```
+
+### 4. (Optional) Private Registry Authentication
+
+If your cluster uses private container registries (e.g., AWS ECR, GCR, etc.), create a `registry-credentials` secret so k8s-mapper can inspect image provenance:
+
+```bash
+# AWS ECR example
+TOKEN=$(aws ecr get-login-password --region <REGION>)
+kubectl create secret docker-registry registry-credentials \
+  --docker-server=<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com \
+  --docker-username=AWS \
+  --docker-password=$TOKEN \
+  -n o3-security
+```
+
+> **Note:** ECR tokens expire after 12h. For a permanent solution, use [IRSA](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) — the inspector will automatically use IRSA credentials if configured.
+
+**Auth strategies are tried in order (smart fallback chain):**
+1. **K8s secret** — reads the `registry-credentials` secret (this step)
+2. **ECR SDK** — uses IRSA / instance profile / env credentials
+3. **Docker config** — `~/.docker/config.json`
+4. **Anonymous** — public registries (Docker Hub, GHCR, etc.)
 
 ### Verify Installation
 
@@ -56,13 +71,17 @@ kubectl exec -n o3-security deploy/k8s-mapper -- wget -qO- http://localhost:8080
 
 ## RBAC Permissions
 
-k8s-mapper requires **read-only** access to 3 resource types. No write access, no secrets, no configmaps.
+k8s-mapper requires **read-only** access. No write access, no broad secrets access.
 
 | Resource | API Group | Verbs | Purpose |
 |---|---|---|---|
 | `namespaces` | core (`""`) | `get`, `list`, `watch` | Track namespace lifecycle |
-| `pods` | core (`""`) | `get`, `list`, `watch` | Track pod metadata & container images |
-| `jobs` | `batch` | `get`, `list`, `watch` | Track job metadata & container images |
+| `pods` | core (`""`) | `get`, `list`, `watch` | Track pod images & metadata |
+| `services` | core (`""`) | `get`, `list`, `watch` | Internet reachability mapping |
+| `ingresses` | `networking.k8s.io` | `get`, `list`, `watch` | Internet reachability mapping |
+| `secrets` (scoped) | core (`""`) | `get` | **Only** the `registry-credentials` secret for registry auth |
+
+> The secrets permission uses `resourceNames: ["registry-credentials"]` — k8s-mapper can only read this ONE specific secret, not any other secrets in the cluster.
 
 To audit the exact permissions before deploying:
 
@@ -70,19 +89,20 @@ To audit the exact permissions before deploying:
 cat deploy/rbac.yaml
 ```
 
+## What Gets Tracked
+
+| Category | Resources | Purpose |
+|---|---|---|
+| **Supply Chain** | Pods, container images, OCI labels, cosign signatures, SLSA provenance | Image-to-source-repo mapping, signature verification |
+| **Reachability** | Services, Ingresses | Identify internet-exposed workloads |
+| **Grouping** | Namespaces | Organizational context |
+
 ## Architecture
 
 - **Single Deployment** (not DaemonSet) — one pod watches the entire cluster via the K8s API server
 - **Event-driven** — uses Kubernetes SharedInformers (watch streams), zero polling
 - **~15-30 MB** memory at steady state
 - **Distroless image** — no shell, minimal attack surface, runs as non-root
-
-## Resource Limits
-
-| | Request | Limit |
-|---|---|---|
-| CPU | 50m | 200m |
-| Memory | 64Mi | 256Mi |
 
 ## Configuration
 
@@ -94,6 +114,8 @@ cat deploy/rbac.yaml
 | `--sync-interval` | `60s` | How often to push data to O3 backend |
 | `--addr` | `:8080` | HTTP server listen address |
 | `--log-level` | `info` | Log level: `debug`, `info`, `warn`, `error` |
+| `REGISTRY_SECRET_NAME` | `registry-credentials` | K8s secret name for registry auth |
+| `REGISTRY_SECRET_NAMESPACE` | `o3-security` | Namespace of the registry secret |
 
 ## Health Endpoints
 
