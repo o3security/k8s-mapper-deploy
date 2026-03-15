@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/name: k8s-mapper
     app.kubernetes.io/component: resource-mapper
 ---
-# ClusterRole — READ-ONLY access to namespaces, pods, jobs, services, ingresses.
+# ClusterRole — READ-ONLY access to supply chain + reachability resources.
 # No secrets, configmaps, or write operations.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -20,9 +20,6 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["namespaces", "pods", "services"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["batch"]
-    resources: ["jobs"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
