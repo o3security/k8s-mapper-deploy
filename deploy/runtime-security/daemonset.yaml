@@ -32,23 +32,24 @@ spec:
           args:
             - "--procfs=/procRoot"
             - "--kayo-workers=8"
-            # Backend mode: fetch rules + upload findings to the O3 platform.
-            # Findings appear under Settings → Rules → Runtime Security → Findings,
-            # deduped into one row per behaviour with confirm/suppress triage.
-            - "--kayo-server-url=$(O3_API_URL)"
-            - "--kayo-apikey=$(O3_API_KEY)"
-            - "--kayo-project-name=$(O3_CLUSTER_NAME)"
             # Score external egress destinations against O3 threat intel.
             - "--kayo-reputation-url=https://ipinfo.o3.security"
+          # Backend config is passed via env, NOT args, so the API key never lands
+          # in the pod command line (visible in `kubectl describe` / `ps`). The agent
+          # reads these through viper's TETRAGON_ env binding. Findings appear under
+          # Settings → Rules → Runtime Security → Findings, deduped per behaviour.
           env:
-            - name: O3_API_KEY
+            # kayo-apikey  ← TETRAGON_KAYO_APIKEY (secret-backed, never in argv)
+            - name: TETRAGON_KAYO_APIKEY
               valueFrom:
                 secretKeyRef:
                   name: o3-security-credentials
                   key: api-key
-            - name: O3_API_URL
+            # kayo-server-url ← full GraphQL endpoint
+            - name: TETRAGON_KAYO_SERVER_URL
               value: "https://api.o3.security/graphql"
-            - name: O3_CLUSTER_NAME
+            # kayo-project-name ← a display name for this cluster
+            - name: TETRAGON_KAYO_PROJECT_NAME
               value: "my-cluster"  # Change to your cluster name
           securityContext:
             privileged: true
