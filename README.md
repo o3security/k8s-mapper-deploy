@@ -60,7 +60,8 @@ inventory Deployment. Both live in the same `o3-security` namespace and share th
 
 ```bash
 # Uses the same namespace + o3-security-credentials secret created above.
-# Edit deploy/runtime-security/daemonset.yaml to set O3_CLUSTER_NAME first.
+# Edit deploy/runtime-security/daemonset.yaml to set TETRAGON_KAYO_PROJECT_NAME
+# (a display name for this cluster) first.
 kubectl apply -f deploy/runtime-security/
 ```
 
