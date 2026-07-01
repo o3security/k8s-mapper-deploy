@@ -45,6 +45,41 @@ kubectl exec -n o3-security deploy/k8s-mapper -- wget -qO- http://localhost:8080
 kubectl exec -n o3-security deploy/k8s-mapper -- wget -qO- http://localhost:8080/api/v1/stats
 ```
 
+## Runtime Security (optional — eBPF threat detection)
+
+The same agent family includes **runtime security**: an eBPF-based agent that detects
+threats inside running containers — egress to known-malicious destinations (C2/malware),
+sensitive file access (`/etc/shadow`), privilege escalation, reverse shells, and more.
+Detections appear in the dashboard under **Settings → Rules → Runtime Security → Findings**,
+deduped into one row per behaviour with confirm/suppress triage.
+
+It ships as a **separate privileged `DaemonSet`** (one pod per node) because eBPF needs the
+node's process view and kernel BPF filesystems — unlike the unprivileged `k8s-mapper`
+inventory Deployment. Both live in the same `o3-security` namespace and share the same
+`o3-security-credentials` secret, so if you've already done the steps above, just apply:
+
+```bash
+# Uses the same namespace + o3-security-credentials secret created above.
+# Edit deploy/runtime-security/daemonset.yaml to set O3_CLUSTER_NAME first.
+kubectl apply -f deploy/runtime-security/
+```
+
+Verify:
+
+```bash
+kubectl get pods -n o3-security -l app.kubernetes.io/name=o3-runtime-security
+kubectl logs -n o3-security -l app.kubernetes.io/name=o3-runtime-security --tail=20
+```
+
+**Requirements:**
+- A Linux kernel with eBPF (5.x+; EKS/GKE/AKS default node images qualify).
+- An **API key whose role grants runtime-security rules read + write** (it fetches your
+  detection rules and uploads findings). Generate it under **Settings → API Keys** with a
+  role that includes rule permissions. If the key can't fetch rules, the agent **fails
+  open** — it runs on the 21 default rules baked into the image instead of crash-looping,
+  so your nodes are never affected.
+- The agent is read-only for cluster metadata; it never mutates cluster state.
+
 ## Private Registry Authentication (ECR)
 
 k8s-mapper uses `hostNetwork: true` to access the EC2 Instance Metadata Service (IMDS) directly — the **same way kubelet authenticates** to ECR for image pulls. No secrets, no IRSA needed.

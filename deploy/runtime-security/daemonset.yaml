@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: o3-runtime-security
+  namespace: o3-security
+  labels:
+    app.kubernetes.io/name: o3-runtime-security
+    app.kubernetes.io/component: runtime-security
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: o3-runtime-security
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: o3-runtime-security
+        app.kubernetes.io/component: runtime-security
+    spec:
+      serviceAccountName: o3-runtime-security
+      # eBPF runtime security needs the node's process + network view and the
+      # kernel BPF/debug filesystems. This is why it is a SEPARATE privileged
+      # DaemonSet, not part of the unprivileged k8s-mapper inventory agent.
+      hostPID: true
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+        - operator: Exists   # run on every node, including tainted/control-plane
+      containers:
+        - name: o3-runtime-security
+          image: asia-south1-docker.pkg.dev/o3-public-artifacts/o3-public/kayo:latest
+          imagePullPolicy: Always
+          args:
+            - "--procfs=/procRoot"
+            - "--kayo-workers=8"
+            # Backend mode: fetch rules + upload findings to the O3 platform.
+            # Findings appear under Settings → Rules → Runtime Security → Findings,
+            # deduped into one row per behaviour with confirm/suppress triage.
+            - "--kayo-server-url=$(O3_API_URL)"
+            - "--kayo-apikey=$(O3_API_KEY)"
+            - "--kayo-project-name=$(O3_CLUSTER_NAME)"
+            # Score external egress destinations against O3 threat intel.
+            - "--kayo-reputation-url=https://ipinfo.o3.security"
+          env:
+            - name: O3_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: o3-security-credentials
+                  key: api-key
+            - name: O3_API_URL
+              value: "https://api.o3.security/graphql"
+            - name: O3_CLUSTER_NAME
+              value: "my-cluster"  # Change to your cluster name
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          volumeMounts:
+            - name: bpf
+              mountPath: /sys/fs/bpf
+            - name: debug
+              mountPath: /sys/kernel/debug
+            - name: proc
+              mountPath: /procRoot
+              readOnly: true
+      volumes:
+        - name: bpf
+          hostPath:
+            path: /sys/fs/bpf
+        - name: debug
+          hostPath:
+            path: /sys/kernel/debug
+        - name: proc
+          hostPath:
+            path: /proc
+      terminationGracePeriodSeconds: 30
