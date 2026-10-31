@@ -30,7 +30,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: k8s-mapper
-          image: public.ecr.aws/f9o7b7m0/k8s-mapper:latest
+          image: asia-south1-docker.pkg.dev/o3-public-artifacts/o3-public/k8s-mapper:latest
           args:
             - "--addr=:8080"
             - "--log-level=info"
