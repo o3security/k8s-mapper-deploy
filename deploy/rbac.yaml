@@ -23,6 +23,10 @@ rules:
   - apiGroups: ["networking.k8s.io"]
     resources: ["ingresses"]
     verbs: ["get", "list", "watch"]
+  # Gateway API: most GKE exposure is HTTPRoutes on a Gateway, not Ingresses
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["gateways", "httproutes"]
+    verbs: ["get", "list", "watch"]
 ---
 # ClusterRoleBinding — grants cross-namespace read access
 apiVersion: rbac.authorization.k8s.io/v1
